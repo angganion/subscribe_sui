@@ -46,6 +46,14 @@ module subscription::main {
         transfer::transfer(cap, sender(ctx));
     }
 
+    public fun new_user(ctx: &mut TxContext) : User {
+        let user = User{
+            id: object::new(ctx),
+            isSubscribed: false,
+        };
+       user
+    }
+
     // public fun transfer_subscribe(object: &Subscription, to: address, amount: Coin) {
     //     let balance = object.deposit;
     //     if balance < amount {
@@ -58,14 +66,7 @@ module subscription::main {
     //     object.deposit = balance;
     // }
 
-    // public fun create_user(ctx: &TxContext, user_id: u64) {
-    //     let user = user{
-    //         id: user_id,
-    //         isSubscribed: false,
-    //         poin: 0,
-    //     };
-    //     user.save();
-    // }
+ 
 
 
 
