@@ -33,6 +33,7 @@ module subscription::main {
     struct SubRecipient has key {
         id: UID,
         platfrom: ID,
+        month_count: u64,
         owner: address
     }
 
@@ -65,8 +66,7 @@ module subscription::main {
         let coin_= coin::take(&mut self.deposit, amount, ctx);
         coin_
     }
-
-    
+    // for the first time they have to call this function
     public fun get_subscribe(self: &mut Subscription, coin: Coin<SUI>, ctx: &mut TxContext) : SubRecipient {
         assert!(coin::value(&coin) == self.price, ERROR_INSUFFCIENT_FUNDS);
         assert!(!table::contains(&self.users, sender(ctx)), ERROR_ALREADY_SUB);
@@ -78,16 +78,28 @@ module subscription::main {
         let sub = SubRecipient {
             id: object::new(ctx),
             platfrom: object::id(self),
+            month_count: 1,
             owner: sender(ctx)
         };
         sub
     }
+    // users can sub monthly 
+    public fun get_monthly_subscribe(self: &mut Subscription, sub: &mut SubRecipient, coin: Coin<SUI>, ctx: &mut TxContext) {
+        assert!(coin::value(&coin) == self.price, ERROR_INSUFFCIENT_FUNDS);
+        assert!(table::contains(&self.users, sender(ctx)), ERROR_ALREADY_SUB);
 
-    public fun deleteSubscription(self: SubRecipient, ctx: &mut TxContext) {
+        let balance_ = coin::into_balance(coin);
+        balance::join(&mut self.deposit, balance_);
+
+        sub.month_count = sub.month_count + 1;
+    }
+
+    public fun destroye_subscription(self: SubRecipient, ctx: &mut TxContext) {
        assert!(sender(ctx) == self.owner, ERROR_NOT_OWNER);
        let SubRecipient {
         id,
         platfrom: _,
+        month_count: _,
         owner: _
        } = self;
        object::delete(id);
