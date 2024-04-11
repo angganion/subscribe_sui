@@ -6,11 +6,20 @@ module subscription::main {
     use sui::transfer::Self;
     use sui::clock::{Self, Clock, timestamp_ms};
     use sui::object::{Self, UID, ID};
+    use sui::table::{Self, Table};
+
+    const ERROR_INVALID_CAP :u64 = 0;
+    const ERROR_INSUFFCIENT_FUNDS : u64 = 1;
+    const ERROR_NOT_OWNER : u64 = 2;
+    const ERROR_ALREADY_SUB : u64 = 3;
+    const ERROR_NOT_SUB : u64 = 4;
 
     struct Subscription has key, store {
         id: UID,
         user_id: u64,
         deposit: Balance<SUI>,
+        users: Table<address, bool>,
+        price: u64,
         start_time: u64,
         end_time: u64,
         active: bool,
@@ -21,18 +30,21 @@ module subscription::main {
         subscription_id:ID
     }
 
-    struct User has key {
+    struct SubRecipient has key {
         id: UID,
-        isSubscribed: bool,
+        platfrom: ID,
+        owner: address
     }
 
-    public fun new_subscribe(user_id: u64, period: u64, c: &Clock, ctx:&mut TxContext) {
+    public fun new_subscribe(user_id: u64, period: u64, price_: u64, c: &Clock, ctx:&mut TxContext) {
         let id_ = object::new(ctx);
         let inner = object::uid_to_inner(&id_);
         let subscription = Subscription{
             id: id_,
             user_id: user_id,
             deposit: balance::zero(),
+            users: table::new(ctx),
+            price: price_,
             start_time: timestamp_ms(c),
             end_time: timestamp_ms(c) + period,
             active: true,
@@ -46,112 +58,54 @@ module subscription::main {
         transfer::transfer(cap, sender(ctx));
     }
 
-    public fun new_user(ctx: &mut TxContext) : User {
-        let user = User{
-            id: object::new(ctx),
-            isSubscribed: false,
-        };
-       user
+    public fun transfer_subscribe(cap: &SubscriptionCap, self: &mut Subscription, amount: u64, ctx: &mut TxContext) : Coin<SUI> {
+        assert!(cap.subscription_id == object::id(self), ERROR_INVALID_CAP);
+        assert!(amount > 0, ERROR_INSUFFCIENT_FUNDS);
+
+        let coin_= coin::take(&mut self.deposit, amount, ctx);
+        coin_
     }
 
-    // public fun transfer_subscribe(object: &Subscription, to: address, amount: Coin) {
-    //     let balance = object.deposit;
-    //     if balance < amount {
-    //         panic("Not enough balance");
-    //     }
-    //     let to_balance = balance::load(to);
-    //     to_balance += amount;
-    //     balance -= amount;
-    //     balance::save(to, to_balance);
-    //     object.deposit = balance;
-    // }
+    
+    public fun get_subscribe(self: &mut Subscription, coin: Coin<SUI>, ctx: &mut TxContext) : SubRecipient {
+        assert!(coin::value(&coin) == self.price, ERROR_INSUFFCIENT_FUNDS);
+        assert!(!table::contains(&self.users, sender(ctx)), ERROR_ALREADY_SUB);
 
- 
+        let balance_ = coin::into_balance(coin);
+        balance::join(&mut self.deposit, balance_);
 
+        table::add(&mut self.users, sender(ctx), true);
+        let sub = SubRecipient {
+            id: object::new(ctx),
+            platfrom: object::id(self),
+            owner: sender(ctx)
+        };
+        sub
+    }
 
+    public fun deleteSubscription(self: SubRecipient, ctx: &mut TxContext) {
+       assert!(sender(ctx) == self.owner, ERROR_NOT_OWNER);
+       let SubRecipient {
+        id,
+        platfrom: _,
+        owner: _
+       } = self;
+       object::delete(id);
+    }
 
-    // public fun unsubscribe(ctx: &TxContext, user_id: u64) {
-    //     let user = user.load();
-    //     user.isSubscribed = false;
-    //     user.save();
-    // }
+    public fun get_recepient(self: &SubRecipient) :(ID, address) {
+        (
+            self.platfrom,
+            self.owner
+        )
+    }
 
-    // public fun getSubscription(ctx: &TxContext, user_id: u64) -> Subscription {
-    //     let user = user.load();
-    //     if !user.isSubscribed {
-    //         panic("User is not subscribed");
-    //     }
-    //     let subscription = Subscription.load();
-    //     return subscription;
-    // }
+    public fun get_ended_subscriptions(self: &Subscription) : u64 {
+        self.end_time
+    }
 
-    // public fun deleteSubscription(ctx: &TxContext, user_id: u64) {
-    //     let user = user.load();
-    //     if !user.isSubscribed {
-    //         panic("User is not subscribed");
-    //     }
-    //     let subscription = Subscription.load();
-    //     subscription.active = false;
-    //     subscription.save();
-    // }
-
-    // public fun pay(ctx: &TxContext, user_id: u64, amount: Coin) {
-    //     let user = user.load();
-    //     if !user.isSubscribed {
-    //         panic("User is not subscribed");
-    //     }
-    //     let subscription = Subscription.load();
-    //     if subscription.active {
-    //         subscription.deposit += amount;
-    //         subscription.last_payment_time = Clock::now();
-    //         subscription.save(); 
-    //     }
-    // }
-
-    // public fun tranfer_balance(ctx: &TxContext, to: address, amount: Coin) {
-    //    transfer::transfer(ctx, to, amount){
-    //         let subscription = Subscription.load();
-    //         trasfer_subscribe(&subscription, to, amount);
-    //    } tx_context::Self::new(ctx);
-    // }
-
-    // public fun see_subscription(ctx: &TxContext) -> Subscription {
-    //     let subscription = Subscription.load();
-    //     return subscription;
-    // }
-
-    // public fun see_user(ctx: &TxContext) -> user {
-    //     let user = user.load();
-    //     return user;
-    // }
-
-    // public fun see_ended_subscriptions(ctx: &TxContext) -> Subscription {
-    //     let subscription = Subscription.load();
-    //     if subscription.end_time < Clock::now() {
-    //         return subscription;
-    //     }
-    // }
-
-    // public fun see_active_subscriptions(ctx: &TxContext) -> Subscription {
-    //     let subscription = Subscription.load();
-    //     if subscription.end_time > Clock::now() {
-    //         return subscription;
-    //     }
-    // }
-
-    // public fun see_duration(ctx: &TxContext) -> u64 {
-    //     let subscription = Subscription.load();
-    //     return subscription.end_time - subscription.start_time;
-    // }
-
-    // public fun claim(ctx: &TxContext) {
-    //     let subscription = Subscription.load();
-    //     if subscription.end_time < Clock::now() {
-    //         let balance = balance::load(subscription.user_id);
-    //         balance += subscription.deposit;
-    //         balance::save(subscription.user_id, balance);
-    //         subscription.active = false;
-    //         subscription.save();
-    //     }
-    // }
+    public fun get_active_subscriptions(self: &Subscription, user: address) : bool {
+        assert!(!table::contains(&self.users, user), ERROR_NOT_SUB);
+        true
+    }
 }
