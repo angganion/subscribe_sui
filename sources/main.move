@@ -13,6 +13,7 @@ module subscription::main {
     const ERROR_NOT_OWNER : u64 = 2;
     const ERROR_ALREADY_SUB : u64 = 3;
     const ERROR_NOT_SUB : u64 = 4;
+    const ERROR_SUB_COMPLETED : u64 = 5;
 
     struct Subscription has key, store {
         id: UID,
@@ -67,7 +68,8 @@ module subscription::main {
         coin_
     }
     // for the first time they have to call this function
-    public fun get_subscribe(self: &mut Subscription, coin: Coin<SUI>, ctx: &mut TxContext) : SubRecipient {
+    public fun get_subscribe(self: &mut Subscription, coin: Coin<SUI>, c: &Clock, ctx: &mut TxContext) : SubRecipient {
+        assert!(timestamp_ms(c) < self.end_time, ERROR_SUB_COMPLETED);
         assert!(coin::value(&coin) == self.price, ERROR_INSUFFCIENT_FUNDS);
         assert!(!table::contains(&self.users, sender(ctx)), ERROR_ALREADY_SUB);
 
@@ -84,7 +86,9 @@ module subscription::main {
         sub
     }
     // users can sub monthly 
-    public fun get_monthly_subscribe(self: &mut Subscription, sub: &mut SubRecipient, coin: Coin<SUI>, ctx: &mut TxContext) {
+    public fun get_monthly_subscribe(self: &mut Subscription, sub: &mut SubRecipient, coin: Coin<SUI>, c: &Clock, ctx: &mut TxContext) {
+        assert!(sub.platfrom == object::id(self), ERROR_INVALID_CAP);
+        assert!(timestamp_ms(c) < self.end_time, ERROR_SUB_COMPLETED);
         assert!(coin::value(&coin) == self.price, ERROR_INSUFFCIENT_FUNDS);
         assert!(table::contains(&self.users, sender(ctx)), ERROR_ALREADY_SUB);
 
