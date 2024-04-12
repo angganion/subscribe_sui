@@ -8,13 +8,15 @@ module subscription::main {
     use sui::object::{Self, UID, ID};
     use sui::table::{Self, Table};
 
-    const ERROR_INVALID_CAP :u64 = 0;
-    const ERROR_INSUFFCIENT_FUNDS : u64 = 1;
-    const ERROR_NOT_OWNER : u64 = 2;
-    const ERROR_ALREADY_SUB : u64 = 3;
-    const ERROR_NOT_SUB : u64 = 4;
-    const ERROR_SUB_COMPLETED : u64 = 5;
+    // Define error constants
+    const ERROR_INVALID_CAP: u64 = 0;
+    const ERROR_INSUFFICIENT_FUNDS: u64 = 1;
+    const ERROR_NOT_OWNER: u64 = 2;
+    const ERROR_ALREADY_SUB: u64 = 3;
+    const ERROR_NOT_SUB: u64 = 4;
+    const ERROR_SUB_COMPLETED: u64 = 5;
 
+    // Define structs for subscriptions
     struct Subscription has key, store {
         id: UID,
         user_id: u64,
@@ -28,7 +30,7 @@ module subscription::main {
 
     struct SubscriptionCap has key {
         id: UID,
-        subscription_id:ID
+        subscription_id: ID
     }
 
     struct SubRecipient has key {
@@ -38,10 +40,11 @@ module subscription::main {
         owner: address
     }
 
-    public fun new_subscribe(user_id: u64, period: u64, price_: u64, c: &Clock, ctx:&mut TxContext) {
+    // Function to create a new subscription
+    public fun new_subscribe(user_id: u64, period: u64, price_: u64, c: &Clock, ctx: &mut TxContext) {
         let id_ = object::new(ctx);
         let inner = object::uid_to_inner(&id_);
-        let subscription = Subscription{
+        let subscription = Subscription {
             id: id_,
             user_id: user_id,
             deposit: balance::zero(),
@@ -60,17 +63,19 @@ module subscription::main {
         transfer::transfer(cap, sender(ctx));
     }
 
+    // Function to transfer subscription amount
     public fun transfer_subscribe(cap: &SubscriptionCap, self: &mut Subscription, amount: u64, ctx: &mut TxContext) : Coin<SUI> {
         assert!(cap.subscription_id == object::id(self), ERROR_INVALID_CAP);
-        assert!(amount > 0, ERROR_INSUFFCIENT_FUNDS);
+        assert!(amount > 0, ERROR_INSUFFICIENT_FUNDS);
 
-        let coin_= coin::take(&mut self.deposit, amount, ctx);
+        let coin_ = coin::take(&mut self.deposit, amount, ctx);
         coin_
     }
-    // for the first time they have to call this function
+
+    // Function to subscribe for the first time
     public fun get_subscribe(self: &mut Subscription, coin: Coin<SUI>, c: &Clock, ctx: &mut TxContext) : SubRecipient {
         assert!(timestamp_ms(c) < self.end_time, ERROR_SUB_COMPLETED);
-        assert!(coin::value(&coin) == self.price, ERROR_INSUFFCIENT_FUNDS);
+        assert!(coin::value(&coin) == self.price, ERROR_INSUFFICIENT_FUNDS);
         assert!(!table::contains(&self.users, sender(ctx)), ERROR_ALREADY_SUB);
 
         let balance_ = coin::into_balance(coin);
@@ -85,12 +90,13 @@ module subscription::main {
         };
         sub
     }
-    // users can sub monthly 
+
+    // Function to subscribe monthly
     public fun get_monthly_subscribe(self: &mut Subscription, sub: &mut SubRecipient, coin: Coin<SUI>, c: &Clock, ctx: &mut TxContext) {
         assert!(sub.platfrom == object::id(self), ERROR_INVALID_CAP);
         assert!(timestamp_ms(c) < self.end_time, ERROR_SUB_COMPLETED);
-        assert!(coin::value(&coin) == self.price, ERROR_INSUFFCIENT_FUNDS);
-        assert!(table::contains(&self.users, sender(ctx)), ERROR_ALREADY_SUB);
+        assert!(coin::value(&coin) == self.price, ERROR_INSUFFICIENT_FUNDS);
+        assert!(table::contains(&self.users, sender(ctx)), ERROR_NOT_SUB);
 
         let balance_ = coin::into_balance(coin);
         balance::join(&mut self.deposit, balance_);
@@ -98,30 +104,25 @@ module subscription::main {
         sub.month_count = sub.month_count + 1;
     }
 
-    public fun destroye_subscription(self: SubRecipient, ctx: &mut TxContext) {
-       assert!(sender(ctx) == self.owner, ERROR_NOT_OWNER);
-       let SubRecipient {
-        id,
-        platfrom: _,
-        month_count: _,
-        owner: _
-       } = self;
-       object::delete(id);
+    // Function to destroy a subscription
+    public fun destroy_subscription(self: SubRecipient, ctx: &mut TxContext) {
+        assert!(sender(ctx) == self.owner, ERROR_NOT_OWNER);
+        object::delete(self.id);
     }
 
-    public fun get_recepient(self: &SubRecipient) :(ID, address) {
-        (
-            self.platfrom,
-            self.owner
-        )
+    // Function to retrieve recipient information
+    public fun get_recipient(self: &SubRecipient) : (ID, address) {
+        (self.platfrom, self.owner)
     }
 
-    public fun get_ended_subscriptions(self: &Subscription) : u64 {
-        self.end_time
+    // Function to check if a subscription has ended
+    public fun get_ended_subscriptions(self: &Subscription) : bool {
+        !self.active
     }
 
+    // Function to check if a user is an active subscriber
     public fun get_active_subscriptions(self: &Subscription, user: address) : bool {
-        assert!(!table::contains(&self.users, user), ERROR_NOT_SUB);
+        assert!(table::contains(&self.users, user), ERROR_NOT_SUB);
         true
     }
 }
