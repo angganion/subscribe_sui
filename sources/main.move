@@ -9,7 +9,7 @@ module subscription::main {
     use sui::table::{Self, Table};
 
     const ERROR_INVALID_CAP :u64 = 0;
-    const ERROR_INSUFFCIENT_FUNDS : u64 = 1;
+    const ERROR_INSUFFICIENT_FUNDS : u64 = 1;
     const ERROR_NOT_OWNER : u64 = 2;
     const ERROR_ALREADY_SUB : u64 = 3;
     const ERROR_NOT_SUB : u64 = 4;
@@ -62,7 +62,7 @@ module subscription::main {
 
     public fun transfer_subscribe(cap: &SubscriptionCap, self: &mut Subscription, amount: u64, ctx: &mut TxContext) : Coin<SUI> {
         assert!(cap.subscription_id == object::id(self), ERROR_INVALID_CAP);
-        assert!(amount > 0, ERROR_INSUFFCIENT_FUNDS);
+        assert!(amount > 0, ERROR_INSUFFICIENT_FUNDS);
 
         let coin_= coin::take(&mut self.deposit, amount, ctx);
         coin_
@@ -70,7 +70,7 @@ module subscription::main {
     // for the first time they have to call this function
     public fun get_subscribe(self: &mut Subscription, coin: Coin<SUI>, c: &Clock, ctx: &mut TxContext) : SubRecipient {
         assert!(timestamp_ms(c) < self.end_time, ERROR_SUB_COMPLETED);
-        assert!(coin::value(&coin) == self.price, ERROR_INSUFFCIENT_FUNDS);
+        assert!(coin::value(&coin) == self.price, ERROR_INSUFFICIENT_FUNDS);
         assert!(!table::contains(&self.users, sender(ctx)), ERROR_ALREADY_SUB);
 
         let balance_ = coin::into_balance(coin);
@@ -89,8 +89,8 @@ module subscription::main {
     public fun get_monthly_subscribe(self: &mut Subscription, sub: &mut SubRecipient, coin: Coin<SUI>, c: &Clock, ctx: &mut TxContext) {
         assert!(sub.platfrom == object::id(self), ERROR_INVALID_CAP);
         assert!(timestamp_ms(c) < self.end_time, ERROR_SUB_COMPLETED);
-        assert!(coin::value(&coin) == self.price, ERROR_INSUFFCIENT_FUNDS);
-        assert!(table::contains(&self.users, sender(ctx)), ERROR_ALREADY_SUB);
+        assert!(coin::value(&coin) == self.price, ERROR_INSUFFICIENT_FUNDS);
+        assert!(table::contains(&self.users, sender(ctx)), ERROR_NOT_SUB);
 
         let balance_ = coin::into_balance(coin);
         balance::join(&mut self.deposit, balance_);
