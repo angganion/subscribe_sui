@@ -1,4 +1,4 @@
-# Subscription Smart Contract
+# Subscription With SUI Blockchain
 
 This is a Sui smart contract that manages subscriptions for a platform. The contract allows users to subscribe to a service by depositing the required amount of SUI tokens. The contract also provides functionality to handle monthly subscription renewals and subscription management.
 
