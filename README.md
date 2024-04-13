@@ -1,29 +1,40 @@
-# Subscription Module
+# Subscription Smart Contract
 
-This is a Sui smart contract module that implements a subscription system. It allows users to subscribe to a service and make payments, while also providing functionality for administrators to manage the subscriptions.
+This is a Sui smart contract that manages subscriptions for a platform. The contract allows users to subscribe to a service by depositing the required amount of SUI tokens. The contract also provides functionality to handle monthly subscription renewals and subscription management.
 
-# Features
+## Features
 
-## User Management:
-The module allows the creation of user accounts and tracks whether a user is subscribed or not.
+- **New Subscription:** Users can create a new subscription by providing their user ID, subscription period, and price.
+- **Transfer Subscription:** Users can transfer a portion of their subscription deposit to the contract.
+- **Get Subscription:** Users can subscribe to the service by depositing the required amount of SUI tokens.
+- **Monthly Subscription Renewal:** Existing subscribers can renew their subscription by depositing the required amount of SUI tokens.
+- **Destroy Subscription:** Subscription owners can destroy their subscription.
+- **Subscription Information:** The contract provides functions to retrieve information about subscriptions, such as the end time and active subscriptions for a user.
 
-## Subscription Management:
-Users can subscribe to a service by providing a deposit and a subscription period. The module keeps track of the subscription details, including the start and end time, the last payment time, and whether the subscription is active or not.
+## Usage
 
-## Payment:
-Users can make payments to their subscription, which will update the deposit balance.
+To use this smart contract, you'll need to deploy it to the Sui network. Once deployed, you can interact with the contract using the provided functions.
 
-## Subscription Transfer:
-Users can transfer their subscription to another address, as long as the new address has enough balance.
+## Error Codes
 
-## Subscription Deletion:
-Users can unsubscribe from the service, which will mark their subscription as inactive.
+The contract defines the following error codes:
 
-## Subscription Viewing:
-The module provides functions to view the details of a user's subscription, as well as the list of active and ended subscriptions.
+- **ERROR_INVALID_CAP:** Indicates an invalid subscription capability.
+- **ERROR_INSUFFICIENT_FUNDS:** Indicates insufficient funds to complete the operation.
+- **ERROR_NOT_OWNER:** Indicates the user is not the owner of the subscription.
+- **ERROR_ALREADY_SUB:** Indicates the user is already subscribed.
+- **ERROR_NOT_SUB:** Indicates the user is not subscribed.
+- **ERROR_SUB_COMPLETED:** Indicates the subscription has already ended.
 
-## Subscription Duration:
-The module can calculate the duration of a subscription.
+## Dependencies
 
-## Subscription Claim:
-When a subscription ends, the user can claim the remaining deposit balance.
+The contract relies on the following Sui modules:
+
+- `sui::sui::SUI`
+- `sui::tx_context`
+- `sui::coin`
+- `sui::balance`
+- `sui::transfer`
+- `sui::clock`
+- `sui::object`
+- `sui::table`
