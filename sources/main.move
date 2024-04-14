@@ -1,4 +1,7 @@
 module subscription::main {
+
+    // Use various modules from the Sui ecosystem
+
     use sui::sui::SUI;
     use sui::tx_context::{TxContext, Self, sender};
     use sui::coin::{Coin, Self};
@@ -8,6 +11,7 @@ module subscription::main {
     use sui::object::{Self, UID, ID};
     use sui::table::{Self, Table};
 
+    // Define error codes
     const ERROR_INVALID_CAP :u64 = 0;
     const ERROR_INSUFFICIENT_FUNDS : u64 = 1;
     const ERROR_NOT_OWNER : u64 = 2;
@@ -15,6 +19,7 @@ module subscription::main {
     const ERROR_NOT_SUB : u64 = 4;
     const ERROR_SUB_COMPLETED : u64 = 5;
 
+    // Define the Subscription struct
     struct Subscription has key, store {
         id: UID,
         user_id: u64,
@@ -26,11 +31,13 @@ module subscription::main {
         active: bool,
     }
 
+    // Define the SubscriptionCap struct
     struct SubscriptionCap has key {
         id: UID,
         subscription_id:ID
     }
 
+    // Define the SubRecipient struct
     struct SubRecipient has key {
         id: UID,
         platfrom: ID,
@@ -38,6 +45,7 @@ module subscription::main {
         owner: address
     }
 
+    // Create a new subscription
     public fun new_subscribe(user_id: u64, period: u64, price_: u64, c: &Clock, ctx:&mut TxContext) {
         let id_ = object::new(ctx);
         let inner = object::uid_to_inner(&id_);
@@ -60,6 +68,7 @@ module subscription::main {
         transfer::transfer(cap, sender(ctx));
     }
 
+    // Transfer a subscription
     public fun transfer_subscribe(cap: &SubscriptionCap, self: &mut Subscription, amount: u64, ctx: &mut TxContext) : Coin<SUI> {
         assert!(cap.subscription_id == object::id(self), ERROR_INVALID_CAP);
         assert!(amount > 0, ERROR_INSUFFICIENT_FUNDS);
@@ -85,7 +94,8 @@ module subscription::main {
         };
         sub
     }
-    // users can sub monthly 
+
+    // Monthly subscription renewal
     public fun get_monthly_subscribe(self: &mut Subscription, sub: &mut SubRecipient, coin: Coin<SUI>, c: &Clock, ctx: &mut TxContext) {
         assert!(sub.platfrom == object::id(self), ERROR_INVALID_CAP);
         assert!(timestamp_ms(c) < self.end_time, ERROR_SUB_COMPLETED);
@@ -98,6 +108,7 @@ module subscription::main {
         sub.month_count = sub.month_count + 1;
     }
 
+    // Destroy a subscription
     public fun destroye_subscription(self: SubRecipient, ctx: &mut TxContext) {
        assert!(sender(ctx) == self.owner, ERROR_NOT_OWNER);
        let SubRecipient {
@@ -109,6 +120,7 @@ module subscription::main {
        object::delete(id);
     }
 
+    // Get the recipient's platform and owner address
     public fun get_recepient(self: &SubRecipient) :(ID, address) {
         (
             self.platfrom,
@@ -116,10 +128,12 @@ module subscription::main {
         )
     }
 
+    // Get the end time of a subscription
     public fun get_ended_subscriptions(self: &Subscription) : u64 {
         self.end_time
     }
 
+    // Check if a user is actively subscribed
     public fun get_active_subscriptions(self: &Subscription, user: address) : bool {
         assert!(!table::contains(&self.users, user), ERROR_NOT_SUB);
         true
